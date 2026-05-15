@@ -1,0 +1,17 @@
+{% extends 'reports/base.html' %}
+
+{% block title %}Login | Dynamic Reports{% endblock %}
+
+{% block content %}
+<section class="panel narrow">
+    <div class="panel-heading">
+        <h2>Login</h2>
+    </div>
+    <p class="helper">Use a staff account for template management or a regional account for report entry.</p>
+    <form method="post" class="stack-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Sign in</button>
+    </form>
+</section>
+{% endblock %}

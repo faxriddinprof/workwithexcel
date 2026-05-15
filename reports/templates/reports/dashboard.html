@@ -1,0 +1,107 @@
+{% extends 'reports/base.html' %}
+
+{% block title %}Dashboard | Dynamic Reports{% endblock %}
+
+{% block content %}
+{% if user.is_staff %}
+    <section class="hero-grid">
+        <article class="hero-card accent">
+            <p class="eyebrow">Templates</p>
+            <h2>{{ templates|length }} recent templates</h2>
+            <p>Each uploaded workbook is parsed once and stored as JSON structure for later reuse.</p>
+        </article>
+        <article class="hero-card">
+            <p class="eyebrow">Assignments</p>
+            <h2>{{ assignments|length }} recent assignments</h2>
+            <p>Assignments stay separate from templates so the module remains reusable across report types.</p>
+        </article>
+    </section>
+
+    <section class="panel">
+        <div class="panel-heading">
+            <h3>Uploaded templates</h3>
+            <a class="button" href="{% url 'reports:template_upload' %}">New template</a>
+        </div>
+        <div class="data-list">
+            {% for template in templates %}
+                <article class="data-row">
+                    <div>
+                        <strong>{{ template.name }}</strong>
+                        <p>{{ template.report_type }} | {{ template.reporting_month|date:'F Y' }}</p>
+                    </div>
+                    <span>{{ template.column_count }} columns</span>
+                </article>
+            {% empty %}
+                <p>No templates uploaded yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-heading">
+            <h3>Assignments</h3>
+            <a class="button" href="{% url 'reports:assignment_create' %}">Create assignment</a>
+        </div>
+        <div class="data-list">
+            {% for assignment in assignments %}
+                <article class="data-row">
+                    <div>
+                        <strong>{{ assignment.assignee.username }}</strong>
+                        <p>{{ assignment.template.name }}</p>
+                    </div>
+                    <a class="button ghost" href="{% url 'reports:submission_editor' assignment.id %}">Open</a>
+                </article>
+            {% empty %}
+                <p>No assignments yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-heading">
+            <h3>Recent submissions</h3>
+        </div>
+        <div class="data-list">
+            {% for submission in submissions %}
+                <article class="data-row">
+                    <div>
+                        <strong>{{ submission.assignment.assignee.username }}</strong>
+                        <p>{{ submission.assignment.template.name }}</p>
+                    </div>
+                    <span class="status {{ submission.status }}">{{ submission.get_status_display }}</span>
+                </article>
+            {% empty %}
+                <p>No submissions yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+{% else %}
+    <section class="hero-card accent">
+        <p class="eyebrow">Assigned reports</p>
+        <h2>Fill reports directly in the browser</h2>
+        <p>Each worksheet opens as a spreadsheet interface with dynamic columns loaded from the uploaded template.</p>
+    </section>
+
+    <section class="panel">
+        <div class="panel-heading">
+            <h3>Your assignments</h3>
+        </div>
+        <div class="data-list">
+            {% for assignment in assignments %}
+                <article class="data-row">
+                    <div>
+                        <strong>{{ assignment.template.name }}</strong>
+                        <p>{{ assignment.template.report_type }} | {{ assignment.template.reporting_month|date:'F Y' }}</p>
+                    </div>
+                    <div class="actions">
+                        <a class="button" href="{% url 'reports:submission_editor' assignment.id %}">Open</a>
+                        <a class="button ghost" href="{% url 'reports:submission_export' assignment.id %}">Export</a>
+                    </div>
+                </article>
+            {% empty %}
+                <p>No reports have been assigned to you yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends 'reports/base.html' %}
+
+{% block title %}Edit Report | Dynamic Reports{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.5.0/dist/handsontable.min.css">
+{% endblock %}
+
+{% block content %}
+<section class="panel editor-panel">
+    <div class="panel-heading">
+        <div>
+            <p class="eyebrow">{{ assignment.template.report_type }}</p>
+            <h2>{{ assignment.template.name }}</h2>
+            <p>{{ assignment.template.reporting_month|date:'F Y' }} | {{ assignment.assignee.username }}</p>
+        </div>
+        <div class="actions">
+            <button class="button ghost" type="button" id="save-draft">Save draft</button>
+            <button class="button" type="button" id="submit-report">Submit report</button>
+            <a class="button ghost" href="{% url 'reports:submission_export' assignment.id %}">Export Excel</a>
+        </div>
+    </div>
+    <p class="helper">Copy/paste, insert rows, and edit values directly. Blank rows are ignored on save.</p>
+    <div id="hot-table" class="hot-wrapper"></div>
+    <p id="save-status" class="helper">Current status: {{ submission.get_status_display }}</p>
+</section>
+
+{{ grid_columns|json_script:'grid-columns' }}
+{{ grid_data|json_script:'grid-data' }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/handsontable@14.5.0/dist/handsontable.min.js"></script>
+<script>
+    const columns = JSON.parse(document.getElementById('grid-columns').textContent);
+    const initialData = JSON.parse(document.getElementById('grid-data').textContent);
+    const statusElement = document.getElementById('save-status');
+    const container = document.getElementById('hot-table');
+    const csrfToken = '{{ csrf_token }}';
+    const saveUrl = '{% url "reports:submission_save" assignment.id %}';
+
+    const dataSchema = Object.fromEntries(columns.map((column) => [column.key, '']));
+    const hot = new Handsontable(container, {
+        data: initialData,
+        columns: columns.map((column) => ({ data: column.key, title: column.label })),
+        colHeaders: columns.map((column) => column.label),
+        rowHeaders: true,
+        contextMenu: true,
+        dropdownMenu: true,
+        filters: true,
+        manualColumnResize: true,
+        minSpareRows: 1,
+        stretchH: 'all',
+        height: '70vh',
+        dataSchema,
+        licenseKey: 'non-commercial-and-evaluation',
+    });
+
+    async function persist(status) {
+        statusElement.textContent = 'Saving...';
+        const response = await fetch(saveUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                status,
+                rows: hot.getSourceData(),
+            }),
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+            statusElement.textContent = payload.error || 'Save failed.';
+            return;
+        }
+        statusElement.textContent = `${status === 'submitted' ? 'Submitted' : 'Draft saved'} at ${new Date(payload.updated_at).toLocaleString()}`;
+    }
+
+    document.getElementById('save-draft').addEventListener('click', () => persist('draft'));
+    document.getElementById('submit-report').addEventListener('click', () => persist('submitted'));
+</script>
+{% endblock %}

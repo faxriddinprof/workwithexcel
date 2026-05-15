@@ -1,0 +1,17 @@
+{% extends 'reports/base.html' %}
+
+{% block title %}Upload Template | Dynamic Reports{% endblock %}
+
+{% block content %}
+<section class="panel narrow">
+    <div class="panel-heading">
+        <h2>Upload monthly report template</h2>
+    </div>
+    <p class="helper">The first non-empty worksheet row is treated as the header row. The detected structure is stored in JSON.</p>
+    <form method="post" enctype="multipart/form-data" class="stack-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="button" type="submit">Upload and parse</button>
+    </form>
+</section>
+{% endblock %}

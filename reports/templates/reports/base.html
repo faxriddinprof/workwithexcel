@@ -1,0 +1,50 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Dynamic Reports{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'reports/reports.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <div class="shell">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">Prototype Module</p>
+                <h1><a href="{% url 'reports:dashboard' %}">Dynamic Excel Reporting</a></h1>
+            </div>
+            <nav>
+                {% if user.is_authenticated %}
+                    <span class="user-pill">{{ user.username }}</span>
+                    {% if user.is_staff %}
+                        <a class="button ghost" href="{% url 'reports:template_upload' %}">Upload template</a>
+                        <a class="button ghost" href="{% url 'reports:assignment_create' %}">Assign reports</a>
+                    {% endif %}
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button class="button" type="submit">Logout</button>
+                    </form>
+                {% endif %}
+            </nav>
+        </header>
+
+        {% if messages %}
+            <section class="messages">
+                {% for message in messages %}
+                    <div class="message {{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </section>
+        {% endif %}
+
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

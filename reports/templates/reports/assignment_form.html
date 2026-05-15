@@ -1,0 +1,17 @@
+{% extends 'reports/base.html' %}
+
+{% block title %}Assign Reports | Dynamic Reports{% endblock %}
+
+{% block content %}
+<section class="panel narrow">
+    <div class="panel-heading">
+        <h2>Assign report template</h2>
+    </div>
+    <p class="helper">One template can be assigned to many regional users without duplicating the template definition.</p>
+    <form method="post" class="stack-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="button" type="submit">Save assignments</button>
+    </form>
+</section>
+{% endblock %}
