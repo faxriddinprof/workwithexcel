@@ -1,12 +1,8 @@
-from datetime import date
 from pathlib import Path
 
 from django import forms
-from django.contrib.auth import get_user_model
 
-from .models import ReportTemplate
-
-User = get_user_model()
+from .models import ReportAssignment, ReportTemplate, Specialist
 
 
 class MonthInput(forms.DateInput):
@@ -39,13 +35,38 @@ class ReportTemplateForm(forms.ModelForm):
 
 class ReportAssignmentForm(forms.Form):
     template = forms.ModelChoiceField(queryset=ReportTemplate.objects.all())
-    assignees = forms.ModelMultipleChoiceField(
-        queryset=User.objects.filter(is_active=True, is_staff=False),
-        widget=forms.CheckboxSelectMultiple,
-    )
+    region = forms.ChoiceField()
     due_date = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['template'].queryset = ReportTemplate.objects.all()
-        self.fields['assignees'].queryset = User.objects.filter(is_active=True, is_staff=False).order_by('username')
+        self.fields['template'].queryset = ReportTemplate.objects.all().order_by('-reporting_month', 'name')
+        region_values = Specialist.objects.filter(
+            type=Specialist.Type.REGIONAL_SPECIALIST,
+            user__is_active=True,
+        ).exclude(region='').values_list('region', flat=True).distinct().order_by('region')
+        self.fields['region'].choices = [(region, region) for region in region_values]
+
+    def clean_region(self):
+        region = self.cleaned_data['region'].strip()
+        if not Specialist.objects.filter(
+            type=Specialist.Type.REGIONAL_SPECIALIST,
+            user__is_active=True,
+            region__iexact=region,
+        ).exists():
+            raise forms.ValidationError('No active regional specialist was found for this region.')
+        return region
+
+
+class ReportAssignmentFilterForm(forms.Form):
+    region = forms.ChoiceField(required=False)
+    status = forms.ChoiceField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        region_values = Specialist.objects.filter(
+            type=Specialist.Type.REGIONAL_SPECIALIST,
+            user__is_active=True,
+        ).exclude(region='').values_list('region', flat=True).distinct().order_by('region')
+        self.fields['region'].choices = [('', 'All regions'), *[(region, region) for region in region_values]]
+        self.fields['status'].choices = [('', 'All statuses'), *ReportAssignment.Status.choices]

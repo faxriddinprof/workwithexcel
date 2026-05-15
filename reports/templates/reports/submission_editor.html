@@ -7,23 +7,38 @@
 {% endblock %}
 
 {% block content %}
-<section class="panel editor-panel">
-    <div class="panel-heading">
-        <div>
-            <p class="eyebrow">{{ assignment.template.report_type }}</p>
-            <h2>{{ assignment.template.name }}</h2>
-            <p>{{ assignment.template.reporting_month|date:'F Y' }} | {{ assignment.assignee.username }}</p>
+<div class="d-flex flex-column flex-xl-row justify-content-between gap-3 mb-4">
+    <div>
+        <p class="section-kicker">Spreadsheet editor</p>
+        <h2 class="page-title mb-1">{{ assignment.template.name }}</h2>
+        <p class="text-secondary mb-0">{{ assignment.template.report_type }} · {{ assignment.region }} · deadline {{ assignment.due_date|date:'d M Y'|default:'Not set' }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-self-start">
+        <span class="badge status-chip status-{{ assignment.status }}">{{ assignment.get_status_display }}</span>
+        <span class="badge text-bg-light border">{{ assignment.progress }}% complete</span>
+    </div>
+</div>
+
+<div class="card module-card mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
+            <div>
+                <h3 class="h5 mb-1">Editable worksheet</h3>
+                <p class="text-secondary mb-0">Copy and paste from Excel, add rows as needed, save drafts, and submit when complete.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-outline-primary" type="button" id="save-draft">Save draft</button>
+                <button class="btn btn-primary" type="button" id="submit-report">Submit report</button>
+                <a class="btn btn-outline-secondary" href="{% url 'reports:submission_export' assignment.id %}">Export Excel</a>
+            </div>
         </div>
-        <div class="actions">
-            <button class="button ghost" type="button" id="save-draft">Save draft</button>
-            <button class="button" type="button" id="submit-report">Submit report</button>
-            <a class="button ghost" href="{% url 'reports:submission_export' assignment.id %}">Export Excel</a>
+        <div id="hot-table" class="hot-wrapper"></div>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+            <p id="save-status" class="text-secondary mb-0">Current status: {{ assignment.get_status_display }}</p>
+            <small class="text-secondary">Blank rows are ignored on save.</small>
         </div>
     </div>
-    <p class="helper">Copy/paste, insert rows, and edit values directly. Blank rows are ignored on save.</p>
-    <div id="hot-table" class="hot-wrapper"></div>
-    <p id="save-status" class="helper">Current status: {{ submission.get_status_display }}</p>
-</section>
+</div>
 
 {{ grid_columns|json_script:'grid-columns' }}
 {{ grid_data|json_script:'grid-data' }}
@@ -75,7 +90,7 @@
             statusElement.textContent = payload.error || 'Save failed.';
             return;
         }
-        statusElement.textContent = `${status === 'submitted' ? 'Submitted' : 'Draft saved'} at ${new Date(payload.updated_at).toLocaleString()}`;
+        statusElement.textContent = `${payload.assignment_status} · ${payload.progress}% complete · ${new Date(payload.updated_at).toLocaleString()}`;
     }
 
     document.getElementById('save-draft').addEventListener('click', () => persist('draft'));

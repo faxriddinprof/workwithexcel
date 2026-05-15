@@ -3,15 +3,22 @@
 {% block title %}Assign Reports | Dynamic Reports{% endblock %}
 
 {% block content %}
-<section class="panel narrow">
-    <div class="panel-heading">
-        <h2>Assign report template</h2>
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+        <p class="section-kicker">Head Officer Workflow</p>
+        <h2 class="page-title mb-1">Assign report by region</h2>
+        <p class="text-secondary mb-0">Choose the template, target region, and deadline. The module will find the matching regional specialist automatically.</p>
     </div>
-    <p class="helper">One template can be assigned to many regional users without duplicating the template definition.</p>
-    <form method="post" class="stack-form">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button class="button" type="submit">Save assignments</button>
-    </form>
-</section>
+    <a class="btn btn-outline-primary" href="{% url 'reports:assigned_reports' %}">View assigned reports</a>
+</div>
+
+<div class="card module-card narrow-card">
+    <div class="card-body p-4">
+        <form method="post" class="form-grid">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="btn btn-primary" type="submit">Assign report</button>
+        </form>
+    </div>
+</div>
 {% endblock %}

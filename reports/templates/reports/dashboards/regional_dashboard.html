@@ -1,0 +1,62 @@
+{% extends 'reports/base.html' %}
+
+{% block title %}Regional Dashboard | Dynamic Reports{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+        <p class="section-kicker">Regional Specialist Dashboard</p>
+        <h2 class="page-title mb-1">My assigned reports</h2>
+        <p class="text-secondary mb-0">Open your assigned reports, monitor deadlines, and submit updates from the spreadsheet editor.</p>
+    </div>
+    <span class="badge text-bg-light border px-3 py-2">Completion rate {{ completion_rate }}%</span>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-xl-3"><div class="card stat-card h-100"><div class="card-body"><div class="label">Assigned</div><div class="value">{{ stats.assigned }}</div></div></div></div>
+    <div class="col-md-6 col-xl-3"><div class="card stat-card h-100"><div class="card-body"><div class="label">Pending</div><div class="value">{{ stats.pending }}</div></div></div></div>
+    <div class="col-md-6 col-xl-3"><div class="card stat-card h-100"><div class="card-body"><div class="label">In progress</div><div class="value">{{ stats.in_progress }}</div></div></div></div>
+    <div class="col-md-6 col-xl-3"><div class="card stat-card h-100"><div class="card-body"><div class="label">Submitted</div><div class="value">{{ stats.submitted }}</div></div></div></div>
+</div>
+
+<div class="card module-card">
+    <div class="card-body p-4">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Template</th>
+                        <th>Month</th>
+                        <th>Deadline</th>
+                        <th>Status</th>
+                        <th>Progress</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for assignment in assignments %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">{{ assignment.template.name }}</div>
+                                <div class="small text-secondary">{{ assignment.template.report_type }}</div>
+                            </td>
+                            <td>{{ assignment.template.reporting_month|date:'F Y' }}</td>
+                            <td>{{ assignment.due_date|date:'d M Y'|default:'-' }}</td>
+                            <td><span class="status-chip status-{{ assignment.status }}">{{ assignment.get_status_display }}</span></td>
+                            <td>
+                                <div class="small mb-1">{{ assignment.progress }}%</div>
+                                <div class="metric-bar"><span style="width: {{ assignment.progress }}%;"></span></div>
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-primary" href="{% url 'reports:submission_editor' assignment.id %}">Open</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="6" class="text-secondary">No reports have been assigned yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

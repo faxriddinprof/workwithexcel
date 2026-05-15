@@ -1,6 +1,14 @@
 from django.contrib import admin
 
-from .models import ReportAssignment, ReportSubmission, ReportTemplate
+from .models import ReportAssignment, ReportSubmission, ReportTemplate, Specialist
+
+
+@admin.register(Specialist)
+class SpecialistAdmin(admin.ModelAdmin):
+    list_display = ('user', 'type', 'region', 'created_at')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'region')
+    list_filter = ('type', 'region')
+    list_select_related = ('user',)
 
 
 @admin.register(ReportTemplate)
@@ -12,14 +20,15 @@ class ReportTemplateAdmin(admin.ModelAdmin):
 
 @admin.register(ReportAssignment)
 class ReportAssignmentAdmin(admin.ModelAdmin):
-    list_display = ('template', 'assignee', 'due_date', 'created_at')
-    search_fields = ('template__name', 'assignee__username')
-    list_select_related = ('template', 'assignee')
+    list_display = ('template', 'region', 'specialist', 'due_date', 'status', 'progress')
+    search_fields = ('template__name', 'specialist__user__username', 'region')
+    list_filter = ('status', 'region')
+    list_select_related = ('template', 'specialist', 'specialist__user')
 
 
 @admin.register(ReportSubmission)
 class ReportSubmissionAdmin(admin.ModelAdmin):
     list_display = ('assignment', 'status', 'submitted_at', 'updated_at')
-    search_fields = ('assignment__template__name', 'assignment__assignee__username')
+    search_fields = ('assignment__template__name', 'assignment__specialist__user__username')
     list_filter = ('status',)
-    list_select_related = ('assignment', 'assignment__template', 'assignment__assignee')
+    list_select_related = ('assignment', 'assignment__template', 'assignment__specialist', 'assignment__specialist__user')

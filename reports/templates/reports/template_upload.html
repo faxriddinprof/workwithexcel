@@ -1,17 +1,75 @@
 {% extends 'reports/base.html' %}
+{% load report_extras %}
 
 {% block title %}Upload Template | Dynamic Reports{% endblock %}
 
 {% block content %}
-<section class="panel narrow">
-    <div class="panel-heading">
-        <h2>Upload monthly report template</h2>
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+        <p class="section-kicker">Head Officer Workflow</p>
+        <h2 class="page-title mb-1">Upload monthly report template</h2>
+        <p class="text-secondary mb-0">Upload the Excel file once, parse the columns dynamically, and reuse the stored JSON structure for regional submissions.</p>
     </div>
-    <p class="helper">The first non-empty worksheet row is treated as the header row. The detected structure is stored in JSON.</p>
-    <form method="post" enctype="multipart/form-data" class="stack-form">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button class="button" type="submit">Upload and parse</button>
-    </form>
-</section>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card module-card h-100">
+            <div class="card-body p-4">
+                <h3 class="h5 mb-3">Template upload</h3>
+                <form method="post" enctype="multipart/form-data" class="form-grid">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <button class="btn btn-primary" type="submit">Upload and parse</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card module-card h-100">
+            <div class="card-body p-4">
+                <h3 class="h5 mb-3">Parsed structure preview</h3>
+                {% if saved_template %}
+                    <div class="mb-3">
+                        <div class="fw-semibold">{{ saved_template.name }}</div>
+                        <div class="text-secondary small">{{ saved_template.report_type }} · {{ saved_template.reporting_month|date:'F Y' }}</div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        {% for column in saved_template.structure.columns %}
+                            <span class="badge text-bg-light border px-3 py-2">{{ column.label }}</span>
+                        {% empty %}
+                            <span class="text-secondary">No columns detected.</span>
+                        {% endfor %}
+                    </div>
+                    {% if saved_template.structure.preview_rows %}
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        {% for column in saved_template.structure.columns %}
+                                            <th>{{ column.label }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in saved_template.structure.preview_rows %}
+                                        <tr>
+                                            {% for column in saved_template.structure.columns %}
+                                                <td>{{ row|get_item:column.key|default:'' }}</td>
+                                            {% endfor %}
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-secondary mb-0">No sample data rows were detected below the header row.</p>
+                    {% endif %}
+                {% else %}
+                    <p class="text-secondary mb-0">After upload, the detected columns and the first few sample rows will appear here.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

@@ -1,0 +1,107 @@
+{% extends 'reports/base.html' %}
+
+{% block title %}Head Officer Dashboard | Dynamic Reports{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+        <p class="section-kicker">Head Officer Dashboard</p>
+        <h2 class="page-title mb-1">Operational overview</h2>
+        <p class="text-secondary mb-0">Track uploaded templates, regional assignments, and submission progress from one place.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-primary" href="{% url 'reports:template_upload' %}">Upload template</a>
+        <a class="btn btn-outline-primary" href="{% url 'reports:assignment_create' %}">Assign report</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-xl-3">
+        <div class="card stat-card h-100"><div class="card-body"><div class="label">Templates</div><div class="value">{{ stats.templates }}</div></div></div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card stat-card h-100"><div class="card-body"><div class="label">Assignments</div><div class="value">{{ stats.assignments }}</div></div></div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card stat-card h-100"><div class="card-body"><div class="label">Submitted</div><div class="value">{{ stats.submitted }}</div></div></div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card stat-card h-100"><div class="card-body"><div class="label">Completion</div><div class="value">{{ stats.completion_rate }}%</div></div></div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="card module-card h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="h5 mb-0">Recent assignments</h3>
+                    <a class="btn btn-sm btn-outline-secondary" href="{% url 'reports:assigned_reports' %}">Open full list</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Template</th>
+                                <th>Region</th>
+                                <th>Specialist</th>
+                                <th>Deadline</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assignment in recent_assignments %}
+                                <tr>
+                                    <td>{{ assignment.template.name }}</td>
+                                    <td>{{ assignment.region }}</td>
+                                    <td>{{ assignment.specialist.display_name }}</td>
+                                    <td>{{ assignment.due_date|date:'d M Y'|default:'-' }}</td>
+                                    <td><span class="status-chip status-{{ assignment.status }}">{{ assignment.get_status_display }}</span></td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="5" class="text-secondary">No assignments created yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card module-card mb-4">
+            <div class="card-body p-4">
+                <h3 class="h5 mb-3">Regional coverage</h3>
+                <div class="d-grid gap-3">
+                    {% for region in regional_distribution %}
+                        <div>
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span>{{ region.region|default:'No region' }}</span>
+                                <span>{{ region.total }} reports</span>
+                            </div>
+                            <div class="metric-bar"><span style="width: {% widthratio region.total 10 100 %}%;"></span></div>
+                        </div>
+                    {% empty %}
+                        <p class="text-secondary mb-0">Add regional specialists to start coverage tracking.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="card module-card">
+            <div class="card-body p-4">
+                <h3 class="h5 mb-3">Latest templates</h3>
+                <div class="d-grid gap-3">
+                    {% for template in recent_templates %}
+                        <div class="border rounded-4 p-3">
+                            <div class="fw-semibold">{{ template.name }}</div>
+                            <div class="text-secondary small">{{ template.report_type }} · {{ template.reporting_month|date:'F Y' }}</div>
+                            <div class="small mt-2">{{ template.column_count }} dynamic columns</div>
+                        </div>
+                    {% empty %}
+                        <p class="text-secondary mb-0">No templates uploaded yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
