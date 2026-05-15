@@ -45,3 +45,11 @@ def formula_values_for_row(structure, target_row):
         key: translated_formula(rule, target_row, target_column=rule['column_index'])
         for key, rule in formula_map.items()
     }
+
+
+def formula_values_for_grid_row(structure, grid_row_number):
+    formula_map = build_formula_map(structure)
+    return {
+        key: translated_formula(rule, grid_row_number, target_column=rule['column_index'])
+        for key, rule in formula_map.items()
+    }

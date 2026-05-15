@@ -158,6 +158,8 @@
         if (!changes || source === 'loadData') {
             return;
         }
+        formulaEngine.rebuildAndRecalculate();
+        hot.render();
         scheduleAutoSave();
     });
 

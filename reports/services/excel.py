@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.utils.text import slugify
 
-from .formulas import build_formula_map, extract_formula_rules, formula_values_for_row, translated_formula
+from .formulas import build_formula_map, extract_formula_rules, formula_values_for_grid_row, formula_values_for_row, translated_formula
 
 
 def parse_template_structure(excel_file):
@@ -58,19 +58,17 @@ def parse_template_structure(excel_file):
 
 def rows_for_grid(submitted_data, structure):
     columns = structure.get('columns', [])
-    data_start_row = structure.get('data_start_row', 2)
     data = []
     for row_offset, row in enumerate(submitted_data or []):
         grid_row = {column['key']: row.get(column['key'], '') for column in columns if not column.get('is_formula')}
-        grid_row.update(formula_values_for_row(structure, data_start_row + row_offset))
+        grid_row.update(formula_values_for_grid_row(structure, row_offset + 1))
         data.append(grid_row)
     return data or [blank_row(structure, row_offset=index) for index in range(5)]
 
 
 def blank_row(structure, row_offset=0):
-    data_start_row = structure.get('data_start_row', 2)
     row = {column['key']: '' for column in structure.get('columns', []) if not column.get('is_formula')}
-    row.update(formula_values_for_row(structure, data_start_row + row_offset))
+    row.update(formula_values_for_grid_row(structure, row_offset + 1))
     return row
 
 
