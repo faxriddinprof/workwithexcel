@@ -24,13 +24,18 @@
         <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
             <div>
                 <h3 class="h5 mb-1">Editable worksheet</h3>
-                <p class="text-secondary mb-0">Copy and paste from Excel, add rows as needed, save drafts, and submit when complete.</p>
+                <p class="text-secondary mb-0">Copy and paste from Excel, add rows as needed, save drafts, and calculated cells update automatically from template formulas.</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
                 <button class="btn btn-outline-primary" type="button" id="save-draft">Save draft</button>
                 <button class="btn btn-primary" type="button" id="submit-report">Submit report</button>
                 <a class="btn btn-outline-secondary" href="{% url 'reports:submission_export' assignment.id %}">Export Excel</a>
             </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="badge text-bg-light border">Editable inputs</span>
+            <span class="badge formula-badge">Formula cells</span>
+            <span class="small text-secondary align-self-center">Formula cells are generated from the uploaded template and saved automatically on export.</span>
         </div>
         <div id="hot-table" class="hot-wrapper"></div>
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
@@ -46,6 +51,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/handsontable@14.5.0/dist/handsontable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hyperformula@2.7.1/dist/hyperformula.full.min.js"></script>
 <script>
     const columns = JSON.parse(document.getElementById('grid-columns').textContent);
     const initialData = JSON.parse(document.getElementById('grid-data').textContent);
@@ -53,11 +59,23 @@
     const container = document.getElementById('hot-table');
     const csrfToken = '{{ csrf_token }}';
     const saveUrl = '{% url "reports:submission_save" assignment.id %}';
+    const saveDraftButton = document.getElementById('save-draft');
+    const submitButton = document.getElementById('submit-report');
+    const formulaColumnKeys = new Set(columns.filter((column) => column.is_formula).map((column) => column.key));
+    const formulaEngine = HyperFormula.buildEmpty({ licenseKey: 'internal-use-in-handsontable' });
+    let autoSaveTimer = null;
+    let isSaving = false;
+    let pendingAutoSave = false;
 
     const dataSchema = Object.fromEntries(columns.map((column) => [column.key, '']));
     const hot = new Handsontable(container, {
         data: initialData,
-        columns: columns.map((column) => ({ data: column.key, title: column.label })),
+        columns: columns.map((column) => ({
+            data: column.key,
+            title: column.label,
+            readOnly: Boolean(column.read_only),
+            className: column.is_formula ? 'formula-cell' : '',
+        })),
         colHeaders: columns.map((column) => column.label),
         rowHeaders: true,
         contextMenu: true,
@@ -68,30 +86,80 @@
         stretchH: 'all',
         height: '70vh',
         dataSchema,
+        formulas: {
+            engine: formulaEngine,
+        },
         licenseKey: 'non-commercial-and-evaluation',
     });
 
-    async function persist(status) {
-        statusElement.textContent = 'Saving...';
-        const response = await fetch(saveUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken,
-            },
-            body: JSON.stringify({
-                status,
-                rows: hot.getSourceData(),
-            }),
+    function serializeEditableRows() {
+        return hot.getSourceData().map((row) => {
+            const cleanRow = {};
+            columns.forEach((column) => {
+                if (!formulaColumnKeys.has(column.key)) {
+                    cleanRow[column.key] = row[column.key];
+                }
+            });
+            return cleanRow;
         });
+    }
 
-        const payload = await response.json();
-        if (!response.ok) {
-            statusElement.textContent = payload.error || 'Save failed.';
+    function setSavingState(active, label = 'Saving...') {
+        isSaving = active;
+        saveDraftButton.disabled = active;
+        submitButton.disabled = active;
+        if (active) {
+            statusElement.textContent = label;
+        }
+    }
+
+    async function persist(status) {
+        if (isSaving) {
+            pendingAutoSave = status === 'draft';
             return;
         }
-        statusElement.textContent = `${payload.assignment_status} · ${payload.progress}% complete · ${new Date(payload.updated_at).toLocaleString()}`;
+
+        setSavingState(true, status === 'submitted' ? 'Submitting...' : 'Saving draft...');
+        try {
+            const response = await fetch(saveUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({
+                    status,
+                    rows: serializeEditableRows(),
+                }),
+            });
+
+            const payload = await response.json();
+            if (!response.ok) {
+                statusElement.textContent = payload.error || 'Save failed.';
+                return;
+            }
+            statusElement.textContent = `${payload.assignment_status} · ${payload.progress}% complete · ${new Date(payload.updated_at).toLocaleString()}`;
+        } finally {
+            setSavingState(false);
+            if (pendingAutoSave && status !== 'submitted') {
+                pendingAutoSave = false;
+                persist('draft');
+            }
+        }
     }
+
+    function scheduleAutoSave() {
+        window.clearTimeout(autoSaveTimer);
+        statusElement.textContent = 'Unsaved changes...';
+        autoSaveTimer = window.setTimeout(() => persist('draft'), 1200);
+    }
+
+    hot.addHook('afterChange', (changes, source) => {
+        if (!changes || source === 'loadData') {
+            return;
+        }
+        scheduleAutoSave();
+    });
 
     document.getElementById('save-draft').addEventListener('click', () => persist('draft'));
     document.getElementById('submit-report').addEventListener('click', () => persist('submitted'));

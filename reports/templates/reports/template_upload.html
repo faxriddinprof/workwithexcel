@@ -36,11 +36,29 @@
                     </div>
                     <div class="d-flex flex-wrap gap-2 mb-3">
                         {% for column in saved_template.structure.columns %}
-                            <span class="badge text-bg-light border px-3 py-2">{{ column.label }}</span>
+                            <span class="badge {% if column.is_formula %}text-bg-warning-subtle border border-warning-subtle text-warning-emphasis{% else %}text-bg-light border{% endif %} px-3 py-2">
+                                {{ column.label }}
+                                {% if column.is_formula %}
+                                    <span class="ms-1">fx</span>
+                                {% endif %}
+                            </span>
                         {% empty %}
                             <span class="text-secondary">No columns detected.</span>
                         {% endfor %}
                     </div>
+                    {% if saved_template.structure.formulas %}
+                        <div class="formula-panel mb-3">
+                            <div class="fw-semibold mb-2">Detected formulas</div>
+                            <div class="d-grid gap-2">
+                                {% for formula in saved_template.structure.formulas %}
+                                    <div class="formula-chip">
+                                        <strong>{{ formula.key }}</strong>
+                                        <span>{{ formula.formula }}</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
                     {% if saved_template.structure.preview_rows %}
                         <div class="table-responsive">
                             <table class="table table-sm align-middle mb-0">
@@ -55,7 +73,7 @@
                                     {% for row in saved_template.structure.preview_rows %}
                                         <tr>
                                             {% for column in saved_template.structure.columns %}
-                                                <td>{{ row|get_item:column.key|default:'' }}</td>
+                                                <td class="{% if column.is_formula %}formula-preview-cell{% endif %}">{{ row|get_item:column.key|default:'' }}</td>
                                             {% endfor %}
                                         </tr>
                                     {% endfor %}

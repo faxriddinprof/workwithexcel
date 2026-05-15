@@ -170,6 +170,41 @@ a {
     border-radius: 1rem;
 }
 
+.formula-badge {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.formula-panel {
+    border: 1px solid #f3e2a5;
+    border-radius: 1rem;
+    background: #fffdf4;
+    padding: 1rem;
+}
+
+.formula-chip {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 0.8rem;
+    background: rgba(245, 158, 11, 0.08);
+    color: #7c4a03;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 0.92rem;
+}
+
+.formula-preview-cell {
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.formula-cell {
+    background: rgba(254, 243, 199, 0.5) !important;
+    color: #92400e;
+    font-weight: 600;
+}
+
 .metric-bar {
     height: 0.65rem;
     border-radius: 999px;

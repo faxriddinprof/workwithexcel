@@ -41,7 +41,7 @@ def calculate_progress(rows, structure, submission_status):
     if submission_status == 'submitted':
         return 100
 
-    columns = structure.get('columns', [])
+    columns = [column for column in structure.get('columns', []) if not column.get('is_formula')]
     if not rows or not columns:
         return 0
 

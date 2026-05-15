@@ -5,12 +5,15 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.utils.text import slugify
 
+from .formulas import build_formula_map, extract_formula_rules, formula_values_for_row, translated_formula
+
 
 def parse_template_structure(excel_file):
     workbook = _load_workbook(excel_file)
     worksheet = workbook.active
     rows = list(worksheet.iter_rows(values_only=True))
     header_index, headers = _detect_headers(rows)
+    data_start_row = header_index + 2
     columns = []
     used_labels = set()
 
@@ -25,8 +28,12 @@ def parse_template_structure(excel_file):
                 'key': key,
                 'label': normalized,
                 'index': index,
+                'is_formula': False,
+                'read_only': False,
             }
         )
+
+    formula_rules = extract_formula_rules(worksheet, columns, data_start_row)
 
     preview_rows = []
     for raw_row in rows[header_index + 1: header_index + 4]:
@@ -42,26 +49,34 @@ def parse_template_structure(excel_file):
     return {
         'sheet_name': worksheet.title,
         'header_row': header_index + 1,
-        'data_start_row': header_index + 2,
+        'data_start_row': data_start_row,
         'columns': columns,
+        'formulas': formula_rules,
         'preview_rows': preview_rows,
     }
 
 
 def rows_for_grid(submitted_data, structure):
     columns = structure.get('columns', [])
+    data_start_row = structure.get('data_start_row', 2)
     data = []
-    for row in submitted_data or []:
-        data.append({column['key']: row.get(column['key'], '') for column in columns})
-    return data or [blank_row(structure) for _ in range(5)]
+    for row_offset, row in enumerate(submitted_data or []):
+        grid_row = {column['key']: row.get(column['key'], '') for column in columns if not column.get('is_formula')}
+        grid_row.update(formula_values_for_row(structure, data_start_row + row_offset))
+        data.append(grid_row)
+    return data or [blank_row(structure, row_offset=index) for index in range(5)]
 
 
-def blank_row(structure):
-    return {column['key']: '' for column in structure.get('columns', [])}
+def blank_row(structure, row_offset=0):
+    data_start_row = structure.get('data_start_row', 2)
+    row = {column['key']: '' for column in structure.get('columns', []) if not column.get('is_formula')}
+    row.update(formula_values_for_row(structure, data_start_row + row_offset))
+    return row
 
 
 def normalize_submission_rows(raw_rows, structure):
     columns = structure.get('columns', [])
+    editable_columns = [column for column in columns if not column.get('is_formula')]
     if not isinstance(raw_rows, list):
         raise ValidationError('Invalid spreadsheet payload.')
 
@@ -76,7 +91,7 @@ def normalize_submission_rows(raw_rows, structure):
             raise ValidationError('Rows must be dictionaries or arrays.')
 
         has_value = False
-        for column in columns:
+        for column in editable_columns:
             value = source.get(column['key'], '')
             if value is None:
                 value = ''
@@ -95,6 +110,7 @@ def export_submission_workbook(report_template, submission_rows):
     structure = report_template.structure
     worksheet = workbook[structure['sheet_name']]
     columns = structure.get('columns', [])
+    formula_map = build_formula_map(structure)
     header_row = structure.get('header_row', 1)
     data_start_row = structure.get('data_start_row', header_row + 1)
 
@@ -107,7 +123,15 @@ def export_submission_workbook(report_template, submission_rows):
 
     for row_offset, row in enumerate(submission_rows, start=data_start_row):
         for column_index, column in enumerate(columns, start=1):
-            worksheet.cell(row=row_offset, column=column_index, value=row.get(column['key'], ''))
+            rule = formula_map.get(column['key'])
+            if rule:
+                worksheet.cell(
+                    row=row_offset,
+                    column=column_index,
+                    value=translated_formula(rule, row_offset, target_column=column_index),
+                )
+            else:
+                worksheet.cell(row=row_offset, column=column_index, value=row.get(column['key'], ''))
 
     output = BytesIO()
     workbook.save(output)
