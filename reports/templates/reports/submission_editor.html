@@ -47,6 +47,7 @@
 
 {{ grid_columns|json_script:'grid-columns' }}
 {{ grid_data|json_script:'grid-data' }}
+{{ grid_formulas|json_script:'grid-formulas' }}
 {% endblock %}
 
 {% block extra_js %}
@@ -55,6 +56,7 @@
 <script>
     const columns = JSON.parse(document.getElementById('grid-columns').textContent);
     const initialData = JSON.parse(document.getElementById('grid-data').textContent);
+    const formulaRules = JSON.parse(document.getElementById('grid-formulas').textContent);
     const statusElement = document.getElementById('save-status');
     const container = document.getElementById('hot-table');
     const csrfToken = '{{ csrf_token }}';
@@ -62,10 +64,43 @@
     const saveDraftButton = document.getElementById('save-draft');
     const submitButton = document.getElementById('submit-report');
     const formulaColumnKeys = new Set(columns.filter((column) => column.is_formula).map((column) => column.key));
+    const formulaRulesByKey = new Map(formulaRules.map((rule) => [rule.key, rule]));
     const formulaEngine = HyperFormula.buildEmpty({ licenseKey: 'internal-use-in-handsontable' });
     let autoSaveTimer = null;
     let isSaving = false;
     let pendingAutoSave = false;
+
+    function formulaForGridRow(rule, rowNumber) {
+        const rowOffset = rowNumber - rule.source_row;
+        return rule.formula.replace(/((?:'[^']+'|[A-Za-z0-9_]+)!?)?(\$?[A-Z]{1,3})(\$?)(\d+)/g, (match, sheetPrefix = '', columnRef, absoluteRowMarker, rowRef) => {
+            if (absoluteRowMarker === '$') {
+                return `${sheetPrefix}${columnRef}${absoluteRowMarker}${rowRef}`;
+            }
+            return `${sheetPrefix}${columnRef}${Number(rowRef) + rowOffset}`;
+        });
+    }
+
+    function ensureFormulaCells(rowIndexes) {
+        const updates = [];
+
+        rowIndexes.forEach((rowIndex) => {
+            if (rowIndex < 0) {
+                return;
+            }
+
+            formulaRules.forEach((rule) => {
+                const currentValue = hot.getSourceDataAtRow(rowIndex)?.[rule.key];
+                const expectedFormula = formulaForGridRow(rule, rowIndex + 1);
+                if (currentValue !== expectedFormula) {
+                    updates.push([rowIndex, rule.key, expectedFormula]);
+                }
+            });
+        });
+
+        if (updates.length) {
+            hot.setDataAtRowProp(updates, 'apply-formulas');
+        }
+    }
 
     const dataSchema = Object.fromEntries(columns.map((column) => [column.key, '']));
     const hot = new Handsontable(container, {
@@ -155,9 +190,11 @@
     }
 
     hot.addHook('afterChange', (changes, source) => {
-        if (!changes || source === 'loadData') {
+        if (!changes || source === 'loadData' || source === 'apply-formulas') {
             return;
         }
+        const changedRows = [...new Set(changes.map(([row]) => row).filter((row) => Number.isInteger(row)))];
+        ensureFormulaCells(changedRows);
         formulaEngine.rebuildAndRecalculate();
         hot.render();
         scheduleAutoSave();

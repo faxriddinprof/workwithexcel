@@ -116,6 +116,7 @@ def submission_editor(request, assignment_id):
         'submission': submission,
         'grid_columns': structure.get('columns', []),
         'grid_data': rows_for_grid(submission.submitted_data, structure),
+        'grid_formulas': structure.get('formulas', []),
     }
     return render(request, 'reports/submission_editor.html', context)
 
