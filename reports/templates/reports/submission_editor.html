@@ -70,6 +70,16 @@
     let isSaving = false;
     let pendingAutoSave = false;
 
+    function syncHotInputAccessibility() {
+        const hotInput = container.querySelector('textarea[data-hot-input]');
+        if (!hotInput) {
+            return;
+        }
+
+        hotInput.removeAttribute('aria-hidden');
+        hotInput.setAttribute('aria-label', 'Spreadsheet cell editor');
+    }
+
     function formulaForGridRow(rule, rowNumber) {
         const rowOffset = rowNumber - rule.source_row;
         return rule.formula.replace(/((?:'[^']+'|[A-Za-z0-9_]+)!?)?(\$?[A-Z]{1,3})(\$?)(\d+)/g, (match, sheetPrefix = '', columnRef, absoluteRowMarker, rowRef) => {
@@ -126,6 +136,8 @@
         },
         licenseKey: 'non-commercial-and-evaluation',
     });
+
+    syncHotInputAccessibility();
 
     function serializeEditableRows() {
         return hot.getSourceData().map((row) => {
@@ -197,8 +209,12 @@
         ensureFormulaCells(changedRows);
         formulaEngine.rebuildAndRecalculate();
         hot.render();
+        syncHotInputAccessibility();
         scheduleAutoSave();
     });
+
+    hot.addHook('afterRender', () => syncHotInputAccessibility());
+    hot.addHook('afterBeginEditing', () => syncHotInputAccessibility());
 
     document.getElementById('save-draft').addEventListener('click', () => persist('draft'));
     document.getElementById('submit-report').addEventListener('click', () => persist('submitted'));
